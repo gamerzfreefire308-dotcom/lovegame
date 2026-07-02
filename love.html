@@ -1,1 +1,295 @@
-# lovegame
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Core Defense // Premium Edition</title>
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff0055;
+            --bg-dark: #060713;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-dark);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #gameWrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 480px;
+            max-height: 850px;
+            box-shadow: 0 0 50px rgba(0, 243, 255, 0.1);
+            background: #090a16;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        /* Top HUD */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            display: flex;
+            justify-content: space-between;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        #score { color: var(--neon-blue); text-shadow: 0 0 8px var(--neon-blue); }
+        #health { color: var(--neon-pink); text-shadow: 0 0 8px var(--neon-pink); }
+
+        /* Screens overlays */
+        .screen-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(6, 7, 19, 0.9);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            text-align: center;
+            z-index: 20;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        .hidden { display: none !important; }
+
+        h1 {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        p {
+            color: #7d8296;
+            font-size: 14px;
+            line-height: 1.6;
+            max-width: 320px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--neon-blue), #00a2ff);
+            border: none;
+            padding: 14px 40px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 5px 25px rgba(0, 243, 255, 0.3);
+        }
+
+        /* Glassmorphic Final Win Card */
+        #winCard {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 24px;
+            padding: 40px 25px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            max-width: 380px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="gameWrapper">
+        <div id="hud">
+            <div class="hud-card">CORE INTEGRITY: <span id="health">100%</span></div>
+            <div class="hud-card">SECURED: <span id="score">0</span>/50</div>
+        </div>
+
+        <!-- Briefing Screen -->
+        <div id="startScreen" class="screen-overlay">
+            <h1>TACTICAL DEFENSE</h1>
+            <p>Tap screen to fire lasers. Destroy incoming chaos blocks before they hit your core base at the bottom.</p>
+            <button class="btn" onclick="startGame()">INITIALIZE</button>
+        </div>
+
+        <!-- Failure Screen -->
+        <div id="failScreen" class="screen-overlay hidden">
+            <h1 style="color: var(--neon-pink); text-shadow: 0 0 15px var(--neon-pink);">SYSTEM BREACHED</h1>
+            <p>Core damaged! Lekin ghabrana nahi hai, aapki strategy behtareen thi. Fir se koshish karein.</p>
+            <button class="btn" style="background: linear-gradient(135deg, var(--neon-pink), #ff4181); box-shadow: 0 5px 25px rgba(255,0,85,0.3);" onclick="resetGame()">REBOOT SYSTEM</button>
+        </div>
+
+        <!-- Victory Reward Screen -->
+        <div id="victoryScreen" class="screen-overlay hidden">
+            <div id="winCard">
+                <div style="font-size: 40px; margin-bottom: 20px; text-shadow: 0 0 15px var(--neon-blue);">💎</div>
+                <h1>SECURITY VERIFIED</h1>
+                <p style="color: #d2d5e3; text-align: left; font-size: 15px;">Aapne har ek threat ko perfectly handle kar ke apne core ko safe rakha. Real life mein bhi mere dil ka core aapke paas bilkul safe hai.</p>
+                <p style="color: #d2d5e3; text-align: left; font-size: 15px;">Duniya mein chahe jitna bhi chaos ho, aap meri zindagi ka wo sakoon ho jise main kabhi khona nahi chahta. Thank you hamesha mera dhyaan rakhne ke liye. I love you so much! 👑🌹</p>
+            </div>
+        </div>
+
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let score = 0, health = 100;
+        let isRunning = false;
+
+        const cw = canvas.width = 480;
+        const ch = canvas.height = 800;
+
+        // Game Entities
+        let enemies = [];
+        let lasers = [];
+        let particles = [];
+
+        // Core Base coordinates (Niche safe area)
+        const coreY = ch - 50;
+
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            isRunning = true;
+            spawnEnemy();
+            loop();
+        }
+
+        function spawnEnemy() {
+            if (!isRunning) return;
+            enemies.push({
+                x: Math.random() * (cw - 40) + 20,
+                y: -20,
+                size: Math.random() * 15 + 15,
+                speed: Math.random() * 1.5 + 1.5
+            });
+            // Score badhne ke sath speed aur spawning tez hogi
+            let interval = Math.max(400, 1000 - score * 10);
+            setTimeout(spawnEnemy, interval);
+        }
+
+        // Fire Laser on Click/Tap
+        window.addEventListener('mousedown', (e) => fireLaser(e));
+        window.addEventListener('touchstart', (e) => {
+            if(e.touches.length > 0) fireLaser(e.touches[0]);
+        }, { passive: true });
+
+        function fireLaser(e) {
+            if (!isRunning) return;
+            const rect = canvas.getBoundingClientRect();
+            // Scaling calculation to get exact hit coordinates on mobile layout
+            const clickX = ((e.clientX - rect.left) / rect.width) * cw;
+            const clickY = ((e.clientY - rect.top) / rect.height) * ch;
+
+            // Target calculations
+            const angle = Math.atan2(clickY - coreY, clickX - (cw / 2));
+
+            lasers.push({
+                x: cw / 2,
+                y: coreY,
+                vx: Math.cos(angle) * 9,
+                vy: Math.sin(angle) * 9
+            });
+        }
+
+        function createBurst(x, y, color) {
+            for(let i=0; i<8; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    alpha: 1,
+                    size: Math.random() * 2 + 1.5,
+                    color: color
+                });
+            }
+        }
+
+        function resetGame() {
+            score = 0; health = 100;
+            document.getElementById('score').innerText = score;
+            document.getElementById('health').innerText = "100%";
+            enemies = []; lasers = []; particles = [];
+            document.getElementById('failScreen').classList.add('hidden');
+            isRunning = true;
+            spawnEnemy();
+        }
+
+        function loop() {
+            if (!isRunning) return;
+
+            ctx.fillStyle = '#060713';
+            ctx.fillRect(0, 0, cw, ch);
+
+            // Draw Base Core Line
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.2)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, coreY); ctx.lineTo(cw, coreY);
+            ctx.stroke();
+
+            // Core Power Glow Source
+            ctx.fillStyle = '#00f3ff';
+            ctx.shadowBlur = 20; ctx.shadowColor = '#00f3ff';
+            ctx.beginPath();
+            ctx.arc(cw/2, coreY + 10, 40, Math.PI, 0);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Update Lasers
+            for(let i = lasers.length - 1; i >= 0; i--) {
+                let l = lasers[i];
+                l.x += l.vx; l.y += l.vy;
+
+                ctx.strokeStyle = '#00f3ff';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(l.x, l.y);
+                ctx.lineTo(l.x - l.vx*1.5, l.y - l.vy*1.5);
+                ctx.stroke();
+
+                if (l.y < 0 || l.x < 0 || l.x > cw) lasers.splice(i, 1);
+            }
+
+            // Update Enemies
+            for(let i = enemies.length - 1; i >= 0; i--) {
+                let enemy = enemies[i];
+
